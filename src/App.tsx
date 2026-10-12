@@ -65,11 +65,11 @@ const questions: Question[] = [
   },
   {
     en: {
-      question: 'What is Haneen’s favorite animal? 🐴',
+      question: 'What is Haneen’s favorite animal? 🐾',
       options: ['Cats', 'Rabbits', 'Horses', 'Dogs'],
     },
     ar: {
-      question: 'ما هو الحيوان المفضل عند حنين؟ 🐴',
+      question: 'ما هو الحيوان المفضل عند حنين؟ 🐾',
       options: ['القطط', 'الأرانب', 'الخيول', 'الكلاب'],
     },
     correctAnswer: 2,
@@ -97,7 +97,7 @@ const questions: Question[] = [
   },
   {
     en: {
-      question: 'What are Haneen’s favorite hobbies? 🎨',
+      question: 'What are Haneen’s favorite hobbies? ✨',
       options: [
         'Photography & traveling',
         'Drawing, cooking & reading',
@@ -106,7 +106,7 @@ const questions: Question[] = [
       ],
     },
     ar: {
-      question: 'ما هي هوايات حنين المفضلة؟ 🎨',
+      question: 'ما هي هوايات حنين المفضلة؟ ✨',
       options: [
         'التصوير والسفر',
         'الرسم والطبخ والقراءة',
@@ -118,11 +118,11 @@ const questions: Question[] = [
   },
   {
     en: {
-      question: 'What is Haneen’s favorite color? 💗',
+      question: 'What is Haneen’s favorite color? 🌈',
       options: ['Purple', 'Green', 'Pink', 'Blue'],
     },
     ar: {
-      question: 'ما هو لون حنين المفضل؟ 💗',
+      question: 'ما هو لون حنين المفضل؟ 🌈',
       options: ['البنفسجي', 'الأخضر', 'البينك', 'الأزرق'],
     },
     correctAnswer: 2,
@@ -140,29 +140,29 @@ const questions: Question[] = [
   },
   {
     en: {
-      question: 'What is Haneen’s favorite food? 🍝',
+      question: 'What is Haneen’s favorite food? 🍽️',
       options: ['Sushi', 'Burger', 'Pasta', 'Pizza'],
     },
     ar: {
-      question: 'ما هي الأكلة المفضلة عند حنين؟ 🍝',
+      question: 'ما هي الأكلة المفضلة عند حنين؟ 🍽️',
       options: ['سوشي', 'برجر', 'مكرونة', 'بيتزا'],
     },
     correctAnswer: 2,
   },
   {
     en: {
-      question: 'What is Haneen’s favorite season? ❄️',
+      question: 'What is Haneen’s favorite season? 🗓️',
       options: ['Autumn', 'Summer', 'Winter', 'Spring'],
     },
     ar: {
-      question: 'ما هو الفصل المفضل عند حنين؟ ❄️',
+      question: 'ما هو الفصل المفضل عند حنين؟ 🗓️',
       options: ['الخريف', 'الصيف', 'الشتاء', 'الربيع'],
     },
     correctAnswer: 2,
   },
   {
     en: {
-      question: 'Which mood feels most like Haneen? 🍂',
+      question: 'Which mood feels most like Haneen? 💭',
       options: [
         'An energetic summer mood',
         'A crazy adventure mood',
@@ -171,7 +171,7 @@ const questions: Question[] = [
       ],
     },
     ar: {
-      question: 'أي مود يشبه حنين أكثر؟ 🍂',
+      question: 'أي مود يشبه حنين أكثر؟ 💭',
       options: [
         'مود صيفي مليء بالطاقة',
         'مود مغامرات مجنونة',
