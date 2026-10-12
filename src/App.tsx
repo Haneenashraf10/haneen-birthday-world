@@ -1,7 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
 import { supabase } from './supabase'
 import MemoryWall from './MemoryWall'
+import BirthdayCake from './BirthdayCake'
+import Countdown from './Countdown'
+import Confetti from './Confetti'
+import AdminDashboard from './AdminDashboard'
+import './Extras.css'
 
 type Language = 'en' | 'ar'
 
@@ -176,12 +181,70 @@ const questions: Question[] = [
   },
 ]
 
+const SESSION_KEY = 'haneen-birthday-session'
+
+type SavedSession = { name: string; pin: string }
+
+function readSession(): SavedSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw)
+
+    if (
+      typeof parsed?.name === 'string' &&
+      typeof parsed?.pin === 'string'
+    ) {
+      return { name: parsed.name, pin: parsed.pin }
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+function saveSession(session: SavedSession) {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  } catch {
+    // storage is not available, so the friend just logs in next time
+  }
+}
+
+function clearSession() {
+  try {
+    localStorage.removeItem(SESSION_KEY)
+  } catch {
+    // nothing to clear
+  }
+}
+
 function App() {
   const [envelopeOpened, setEnvelopeOpened] = useState(false)
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
   const [unlocked, setUnlocked] = useState(false)
   const [nameEntered, setNameEntered] = useState(false)
+
+  const [pin, setPin] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [hasTakenQuiz, setHasTakenQuiz] = useState(false)
+  const [restoring, setRestoring] = useState(() => readSession() !== null)
+
+  const [isAdminRoute, setIsAdminRoute] = useState(
+    () => window.location.hash === '#/admin',
+  )
+
+  useEffect(() => {
+    const onHashChange = () =>
+      setIsAdminRoute(window.location.hash === '#/admin')
+
+    window.addEventListener('hashchange', onHashChange)
+
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   const [currentSection, setCurrentSection] = useState('home')
 
@@ -202,6 +265,77 @@ function App() {
   const [messageStatus, setMessageStatus] = useState<
     'idle' | 'sending' | 'sent' | 'error'
   >('idle')
+
+  // Remember me: log the friend back in automatically on this device
+  useEffect(() => {
+    const saved = readSession()
+
+    if (!saved) {
+      setRestoring(false)
+      return
+    }
+
+    const client = supabase
+
+    if (!client) {
+      setRestoring(false)
+      return
+    }
+
+    let cancelled = false
+
+    const restore = async () => {
+      const { data, error } = await client.rpc('friend_login', {
+        p_name: saved.name,
+        p_pin: saved.pin,
+      })
+
+      if (cancelled) return
+
+      const result = data as {
+        status: string
+        display_name?: string
+        has_taken_quiz?: boolean
+      } | null
+
+      if (
+        !error &&
+        result &&
+        (result.status === 'ok' || result.status === 'created')
+      ) {
+        setName(result.display_name ?? saved.name)
+        setPin(saved.pin)
+        setHasTakenQuiz(Boolean(result.has_taken_quiz))
+        setEnvelopeOpened(true)
+        setUnlocked(true)
+        setNameEntered(true)
+        setCurrentSection('home')
+      } else if (!error) {
+        // the saved PIN no longer works, so start fresh
+        clearSession()
+      }
+
+      setRestoring(false)
+    }
+
+    void restore()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSwitchAccount = () => {
+    clearSession()
+    setEnvelopeOpened(false)
+    setKey('')
+    setName('')
+    setPin('')
+    setUnlocked(false)
+    setNameEntered(false)
+    setHasTakenQuiz(false)
+    setCurrentSection('home')
+  }
 
   const resetQuiz = () => {
     setCurrentQuestion(0)
@@ -226,16 +360,64 @@ function App() {
     )
   }
 
-  const handleNameSubmit = () => {
+  const handleNameSubmit = async () => {
     if (!name.trim()) {
-      alert(
-        language === 'en'
-          ? 'Tell me your name first 💗'
-          : 'اكتبي اسمك الأول 💗',
-      )
+      alert('Tell me your name first 💗')
       return
     }
 
+    if (!/^\d{4}$/.test(pin)) {
+      alert('Choose a 4-digit PIN 🔐')
+      return
+    }
+
+    if (!supabase) {
+      alert('Connection problem. Please try again in a moment 💗')
+      return
+    }
+
+    setLoginLoading(true)
+
+    const { data, error } = await supabase.rpc('friend_login', {
+      p_name: name,
+      p_pin: pin,
+    })
+
+    setLoginLoading(false)
+
+    if (error || !data) {
+      console.error('Login error:', error)
+      alert('Something went wrong. Please try again 💗')
+      return
+    }
+
+    const result = data as {
+      status: string
+      display_name?: string
+      has_taken_quiz?: boolean
+    }
+
+    if (result.status === 'wrong_pin') {
+      alert('Hmm... that PIN does not match this name 🔐')
+      return
+    }
+
+    if (result.status === 'locked') {
+      alert('Too many tries. Please wait 10 minutes and try again ⏳')
+      return
+    }
+
+    if (result.status !== 'ok' && result.status !== 'created') {
+      alert('Please check your name and PIN 💗')
+      return
+    }
+
+    const finalName = result.display_name ?? name.trim()
+
+    saveSession({ name: finalName, pin })
+
+    setName(finalName)
+    setHasTakenQuiz(Boolean(result.has_taken_quiz))
     setNameEntered(true)
     setCurrentSection('home')
   }
@@ -261,6 +443,7 @@ function App() {
 
     if (currentQuestion === questions.length - 1) {
       setQuizFinished(true)
+      setHasTakenQuiz(true)
 
       if (supabase) {
         try {
@@ -352,8 +535,35 @@ function App() {
   }
 
   const startQuiz = () => {
+    if (hasTakenQuiz) {
+      alert(
+        'You already took the quiz 💗 Check the leaderboard to see your rank!',
+      )
+      return
+    }
+
     resetQuiz()
     setCurrentSection('quiz')
+  }
+
+  // ADMIN DASHBOARD (open with  your-link/#/admin)
+
+  if (isAdminRoute) {
+    return <AdminDashboard questions={questions} />
+  }
+
+  // RESTORING A SAVED SESSION
+
+  if (restoring) {
+    return (
+      <main className="name-page">
+        <div className="name-card">
+          <div className="name-icon">💗</div>
+
+          <p>Welcome back...</p>
+        </div>
+      </main>
+    )
   }
 
   // ENVELOPE
@@ -438,7 +648,7 @@ function App() {
     )
   }
 
-  // NAME
+  // NAME + PIN
 
   if (!nameEntered) {
     return (
@@ -454,18 +664,37 @@ function App() {
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') handleNameSubmit()
-            }}
             placeholder="Your name..."
             autoComplete="off"
           />
 
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            value={pin}
+            onChange={(event) =>
+              setPin(event.target.value.replace(/\D/g, ''))
+            }
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') handleNameSubmit()
+            }}
+            placeholder="4-digit PIN 🔐"
+            autoComplete="off"
+          />
+
+          <p className="hint">
+            First time? Pick any 4 digits and remember them.
+            <br />
+            Coming back? Use the same name and PIN 💗
+          </p>
+
           <button
             className="enter-world-button"
             onClick={handleNameSubmit}
+            disabled={loginLoading}
           >
-            Enter Haneen's World ✨
+            {loginLoading ? 'Checking...' : "Enter Haneen's World ✨"}
           </button>
 
           <button
@@ -474,6 +703,7 @@ function App() {
               setEnvelopeOpened(false)
               setKey('')
               setName('')
+              setPin('')
               setUnlocked(false)
               setNameEntered(false)
             }}
@@ -510,6 +740,8 @@ function App() {
                 🇪🇬 AR
               </button>
             </div>
+
+            <Confetti />
 
             <div className="quiz-card result-card">
               <div className="result-icon">🎉</div>
@@ -552,15 +784,6 @@ function App() {
               <div className="result-buttons">
                 <button
                   className="main-button"
-                  onClick={resetQuiz}
-                >
-                  {language === 'en'
-                    ? 'Try again 🔄'
-                    : 'جربي تاني 🔄'}
-                </button>
-
-                <button
-                  className="secondary-button"
                   onClick={() => {
                     resetQuiz()
                     setCurrentSection('home')
@@ -801,11 +1024,7 @@ function App() {
                     return (
                       <li
                         key={`${entry.friend_name}-${index}`}
-                        className={
-                          isMe
-                            ? 'leaderboard-row me'
-                            : 'leaderboard-row'
-                        }
+                        className={`leaderboard-row${isMe ? ' me' : ''}${rank <= 3 ? ` top-${rank}` : ''}`}
                       >
                         <span className="leaderboard-rank">
                           {medal}
@@ -840,6 +1059,7 @@ function App() {
     return (
       <MemoryWall
         name={name}
+        pin={pin}
         onBack={() => setCurrentSection('home')}
       />
     )
@@ -866,6 +1086,10 @@ function App() {
           </p>
         </section>
 
+        <Countdown />
+
+        <BirthdayCake name={name} />
+
         <section className="world-menu">
           <p className="world-label">
             A little world made for my favorite people
@@ -881,7 +1105,9 @@ function App() {
 
               <p>How well do you know Haneen?</p>
 
-              <span className="card-arrow">Enter quiz →</span>
+              <span className="card-arrow">
+                {hasTakenQuiz ? 'Completed ✅' : 'Enter quiz →'}
+              </span>
             </button>
 
             <button
@@ -929,9 +1155,18 @@ function App() {
         </section>
 
         <footer className="world-footer">
-          <p>Made with love by Haneen 💗</p>
+          <p>Made with love by ENG. Haneen Ashraf 💗</p>
 
           <small>© 2026 Haneen's Birthday World</small>
+
+          <br />
+
+          <button
+            className="switch-account"
+            onClick={handleSwitchAccount}
+          >
+            Not {name.trim()}? Switch account
+          </button>
         </footer>
       </main>
     </div>

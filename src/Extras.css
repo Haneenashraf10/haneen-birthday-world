@@ -1,0 +1,37 @@
+.switch-account {
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #a8708a;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.switch-account:hover {
+  color: #c81768;
+}
+
+/* Leaderboard: highlight the top 3 */
+.leaderboard-row.top-1 {
+  background: linear-gradient(90deg, #fff4c7, #ffe08a);
+  font-weight: 700;
+}
+
+.leaderboard-row.top-2 {
+  background: linear-gradient(90deg, #f4f6fa, #dde2ea);
+  font-weight: 700;
+}
+
+.leaderboard-row.top-3 {
+  background: linear-gradient(90deg, #ffeadb, #f5c9a6);
+  font-weight: 700;
+}
+
+.leaderboard-row.me.top-1,
+.leaderboard-row.me.top-2,
+.leaderboard-row.me.top-3 {
+  box-shadow: inset 0 0 0 2px #c81768;
+}

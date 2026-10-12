@@ -1,0 +1,27 @@
+.wall-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 0 8px;
+    padding: 8px 14px;
+    border: 1px solid #f3b6cf;
+    border-radius: 999px;
+    background: #fff0f7;
+    color: #c81768;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+      background 0.2s ease,
+      transform 0.2s ease;
+  }
+  
+  .wall-delete:hover:not(:disabled) {
+    background: #ffe0ee;
+    transform: translateY(-1px);
+  }
+  
+  .wall-delete:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
