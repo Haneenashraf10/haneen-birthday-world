@@ -6,6 +6,8 @@ import BirthdayCake from './BirthdayCake'
 import Countdown from './Countdown'
 import Confetti from './Confetti'
 import AdminDashboard from './AdminDashboard'
+import SparkleTrail from './SparkleTrail'
+import ThankYouLetter, { isLetterOpen } from './ThankYouLetter'
 import './Extras.css'
 
 type Language = 'en' | 'ar'
@@ -221,7 +223,7 @@ function clearSession() {
   }
 }
 
-function App() {
+function AppContent() {
   const [envelopeOpened, setEnvelopeOpened] = useState(false)
   const [key, setKey] = useState('')
   const [name, setName] = useState('')
@@ -1086,7 +1088,11 @@ function App() {
           </p>
         </section>
 
-        <Countdown />
+        {isLetterOpen() ? (
+          <ThankYouLetter name={name} />
+        ) : (
+          <Countdown />
+        )}
 
         <BirthdayCake name={name} />
 
@@ -1170,6 +1176,15 @@ function App() {
         </footer>
       </main>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <>
+      <SparkleTrail />
+      <AppContent />
+    </>
   )
 }
 

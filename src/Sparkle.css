@@ -1,0 +1,40 @@
+.sparkle-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 9998;
+  }
+  
+  .sparkle {
+    position: absolute;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    clip-path: polygon(
+      50% 0%,
+      62% 38%,
+      100% 50%,
+      62% 62%,
+      50% 100%,
+      38% 62%,
+      0% 50%,
+      38% 38%
+    );
+    animation: sparkle-pop 0.8s ease-out forwards;
+  }
+  
+  @keyframes sparkle-pop {
+    0% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    }
+    35% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1) rotate(60deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+        scale(0.2) rotate(160deg);
+    }
+  }

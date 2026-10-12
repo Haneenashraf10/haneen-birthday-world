@@ -1,0 +1,51 @@
+.wall-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 0;
+  }
+  
+  .wall-reaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid #f3b6cf;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #8a5a73;
+    font: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease;
+  }
+  
+  .wall-reaction:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: #fff0f7;
+  }
+  
+  .wall-reaction.active {
+    background: #ffe0ee;
+    border-color: #c81768;
+    color: #c81768;
+    font-weight: 600;
+  }
+  
+  .wall-reaction:disabled {
+    opacity: 0.7;
+    cursor: default;
+  }
+  
+  .wall-reaction-emoji {
+    font-size: 1.2rem;
+  }
+  
+  .wall-reaction-summary {
+    margin: 10px 0 0;
+    font-size: 0.88rem;
+    color: #8a5a73;
+    line-height: 1.7;
+  }

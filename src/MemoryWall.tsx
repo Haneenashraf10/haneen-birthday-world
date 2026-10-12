@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { supabase } from './supabase'
 import './MemoryWallDelete.css'
+import './MemoryReactions.css'
 
 type Memory = {
   id: string
@@ -17,9 +18,19 @@ type Memory = {
   created_at: string
 }
 
-type Like = {
+const REACTIONS = [
+  { key: 'love', emoji: '💗', label: 'Love' },
+  { key: 'haha', emoji: '😂', label: 'Haha' },
+  { key: 'aww', emoji: '🥹', label: 'Aww' },
+  { key: 'fire', emoji: '🔥', label: 'Fire' },
+] as const
+
+type ReactionKey = (typeof REACTIONS)[number]['key']
+
+type Reaction = {
   memory_id: string
   friend_name: string
+  reaction: ReactionKey
 }
 
 type Comment = {
@@ -142,7 +153,8 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
   const myName = name.trim()
 
   const [memories, setMemories] = useState<Memory[]>([])
-  const [likes, setLikes] = useState<Like[]>([])
+  const [reactions, setReactions] = useState<Reaction[]>([])
+  const [reactBusy, setReactBusy] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading',
@@ -207,7 +219,9 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
         .select('id, friend_name, caption, image_path, created_at')
         .order('created_at', { ascending: false })
         .limit(100),
-      supabase.from('memory_likes').select('memory_id, friend_name'),
+      supabase
+        .from('memory_reactions')
+        .select('memory_id, friend_name, reaction'),
       supabase
         .from('memory_comments')
         .select('id, memory_id, friend_name, comment, created_at')
@@ -230,7 +244,7 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
     }
 
     setMemories((memoriesResult.data ?? []) as Memory[])
-    setLikes((likesResult.data ?? []) as Like[])
+    setReactions((likesResult.data ?? []) as Reaction[])
     setComments((commentsResult.data ?? []) as Comment[])
     setStatus('ready')
   }, [])
@@ -397,37 +411,58 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
     }
   }
 
-  const handleLike = async (memoryId: string) => {
-    if (!supabase) return
+  const handleReact = async (memoryId: string, key: ReactionKey) => {
+    if (!supabase || reactBusy) return
 
-    const alreadyLiked = likes.some(
-      (like) =>
-        like.memory_id === memoryId &&
-        like.friend_name.toLowerCase() === myName.toLowerCase(),
+    const previous = reactions
+
+    const mine = reactions.find(
+      (item) =>
+        item.memory_id === memoryId &&
+        item.friend_name.toLowerCase() === myName.toLowerCase(),
     )
 
-    if (alreadyLiked) return
+    const others = reactions.filter((item) => item !== mine)
 
-    // show the like immediately, then save it
-    setLikes((current) => [
-      ...current,
-      { memory_id: memoryId, friend_name: myName },
-    ])
+    // tapping the same reaction again removes it
+    const next =
+      mine?.reaction === key
+        ? others
+        : [
+            ...others,
+            { memory_id: memoryId, friend_name: myName, reaction: key },
+          ]
 
-    const { error } = await supabase
-      .from('memory_likes')
-      .insert({ memory_id: memoryId, friend_name: myName })
+    // show it immediately, then save it
+    setReactions(next)
+    setReactBusy(true)
 
-    // 23505 = this name already liked it, so keep the like
-    if (error && error.code !== '23505') {
-      console.error('Error saving like:', error)
+    const { data, error } = await supabase.rpc('toggle_reaction', {
+      p_name: myName,
+      p_pin: pin,
+      p_memory_id: memoryId,
+      p_reaction: key,
+    })
 
-      setLikes((current) =>
-        current.filter(
-          (like) =>
-            !(like.memory_id === memoryId && like.friend_name === myName),
-        ),
-      )
+    setReactBusy(false)
+
+    const result = data as { status: string } | null
+
+    if (
+      error ||
+      !result ||
+      (result.status !== 'set' && result.status !== 'removed')
+    ) {
+      console.error('Error saving reaction:', error, result)
+      setReactions(previous)
+
+      if (result?.status === 'wrong_pin') {
+        alert('Your PIN did not match. Try entering the world again 🔐')
+      } else if (result?.status === 'locked') {
+        alert('Too many wrong tries. Please wait 10 minutes ⏳')
+      } else {
+        alert('Could not save your reaction. Please try again 💗')
+      }
     }
   }
 
@@ -504,13 +539,14 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
 
   const openMemory = memories.find((memory) => memory.id === openId) ?? null
 
-  const openLikes = openMemory
-    ? likes.filter((like) => like.memory_id === openMemory.id)
+  const openReactions = openMemory
+    ? reactions.filter((item) => item.memory_id === openMemory.id)
     : []
 
-  const openLiked = openLikes.some(
-    (like) => like.friend_name.toLowerCase() === myName.toLowerCase(),
-  )
+  const myReaction =
+    openReactions.find(
+      (item) => item.friend_name.toLowerCase() === myName.toLowerCase(),
+    )?.reaction ?? null
 
   const openComments = openMemory
     ? comments.filter((comment) => comment.memory_id === openMemory.id)
@@ -657,8 +693,8 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
             <div className="wall-board">
               <div className="wall-grid">
                 {memories.map((memory, index) => {
-                  const likeCount = likes.filter(
-                    (like) => like.memory_id === memory.id,
+                  const reactionCount = reactions.filter(
+                    (item) => item.memory_id === memory.id,
                   ).length
 
                   const commentCount = comments.filter(
@@ -705,7 +741,7 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
                       </button>
 
                       <p className="wall-plaque">
-                        🤍 {likeCount} · 💬 {commentCount}
+                        💗 {reactionCount} · 💬 {commentCount}
                       </p>
                     </div>
                   )
@@ -753,12 +789,31 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
                   {formatDate(openMemory.created_at)}
                 </p>
 
-                <button
-                  className={openLiked ? 'wall-like liked' : 'wall-like'}
-                  onClick={() => handleLike(openMemory.id)}
-                >
-                  {openLiked ? '💗' : '🤍'} {openLikes.length}
-                </button>
+                <div className="wall-reactions">
+                  {REACTIONS.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className={
+                        myReaction === item.key
+                          ? 'wall-reaction active'
+                          : 'wall-reaction'
+                      }
+                      onClick={() => handleReact(openMemory.id, item.key)}
+                      disabled={reactBusy}
+                      aria-label={item.label}
+                    >
+                      <span className="wall-reaction-emoji">
+                        {item.emoji}
+                      </span>
+                      {
+                        openReactions.filter(
+                          (reaction) => reaction.reaction === item.key,
+                        ).length
+                      }
+                    </button>
+                  ))}
+                </div>
 
                 {isOwner && (
                   <button
@@ -771,10 +826,19 @@ function MemoryWall({ name, pin, onBack }: MemoryWallProps) {
                   </button>
                 )}
 
-                {openLikes.length > 0 && (
-                  <p className="wall-likers" dir="auto">
-                    Liked by{' '}
-                    {openLikes.map((like) => like.friend_name).join(', ')}
+                {openReactions.length > 0 && (
+                  <p className="wall-reaction-summary" dir="auto">
+                    {REACTIONS.map((item) => {
+                      const names = openReactions
+                        .filter((reaction) => reaction.reaction === item.key)
+                        .map((reaction) => reaction.friend_name)
+
+                      return names.length > 0
+                        ? `${item.emoji} ${names.join(', ')}`
+                        : null
+                    })
+                      .filter(Boolean)
+                      .join('  ·  ')}
                   </p>
                 )}
 
