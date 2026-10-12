@@ -7,7 +7,7 @@ import Countdown from './Countdown'
 import Confetti from './Confetti'
 import AdminDashboard from './AdminDashboard'
 import SparkleTrail from './SparkleTrail'
-import ThankYouLetter, { isLetterOpen } from './ThankYouLetter'
+import ThankYouLetter from './ThankYouLetter'
 import './Extras.css'
 
 type Language = 'en' | 'ar'
@@ -183,6 +183,46 @@ const questions: Question[] = [
   },
 ]
 
+// What each friend has already tried (kept on her device)
+const PROGRESS_KEY = 'haneen-birthday-progress'
+
+type TaskKey = 'quiz' | 'leaderboard' | 'wish' | 'message' | 'memories'
+type Progress = Record<TaskKey, boolean>
+
+const EMPTY_PROGRESS: Progress = {
+  quiz: false,
+  leaderboard: false,
+  wish: false,
+  message: false,
+  memories: false,
+}
+
+function progressStorageKey(name: string) {
+  return `${PROGRESS_KEY}:${name.trim().toLowerCase()}`
+}
+
+function readProgress(name: string): Progress {
+  try {
+    const raw = localStorage.getItem(progressStorageKey(name))
+    if (!raw) return EMPTY_PROGRESS
+
+    return { ...EMPTY_PROGRESS, ...JSON.parse(raw) }
+  } catch {
+    return EMPTY_PROGRESS
+  }
+}
+
+function writeProgress(name: string, progress: Progress) {
+  try {
+    localStorage.setItem(
+      progressStorageKey(name),
+      JSON.stringify(progress),
+    )
+  } catch {
+    // storage is not available, so the progress is just not remembered
+  }
+}
+
 const SESSION_KEY = 'haneen-birthday-session'
 
 type SavedSession = { name: string; pin: string }
@@ -233,6 +273,7 @@ function AppContent() {
   const [pin, setPin] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [hasTakenQuiz, setHasTakenQuiz] = useState(false)
+  const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS)
   const [restoring, setRestoring] = useState(() => readSession() !== null)
 
   const [isAdminRoute, setIsAdminRoute] = useState(
@@ -327,6 +368,24 @@ function AppContent() {
     }
   }, [])
 
+  // load what this friend already tried
+  useEffect(() => {
+    if (nameEntered) {
+      setProgress(readProgress(name))
+    }
+  }, [nameEntered, name])
+
+  const markDone = (task: TaskKey) => {
+    setProgress((current) => {
+      if (current[task]) return current
+
+      const next = { ...current, [task]: true }
+      writeProgress(name, next)
+
+      return next
+    })
+  }
+
   const handleSwitchAccount = () => {
     clearSession()
     setEnvelopeOpened(false)
@@ -336,6 +395,7 @@ function AppContent() {
     setUnlocked(false)
     setNameEntered(false)
     setHasTakenQuiz(false)
+    setProgress(EMPTY_PROGRESS)
     setCurrentSection('home')
   }
 
@@ -481,6 +541,7 @@ function AppContent() {
 
   const openLeaderboard = async () => {
     setCurrentSection('leaderboard')
+    markDone('leaderboard')
     setLeaderboardStatus('loading')
 
     if (!supabase) {
@@ -534,6 +595,7 @@ function AppContent() {
 
     setMessageText('')
     setMessageStatus('sent')
+    markDone('message')
   }
 
   const startQuiz = () => {
@@ -1067,6 +1129,34 @@ function AppContent() {
     )
   }
 
+  const journeyTasks = [
+    {
+      key: 'quiz',
+      label: 'Take the birthday quiz 🎀',
+      done: hasTakenQuiz || progress.quiz,
+    },
+    {
+      key: 'leaderboard',
+      label: 'Check the leaderboard 🏆',
+      done: progress.leaderboard,
+    },
+    {
+      key: 'wish',
+      label: 'Blow the candles and make a wish 🎂',
+      done: progress.wish,
+    },
+    {
+      key: 'message',
+      label: 'Leave Haneen a message 💌',
+      done: progress.message,
+    },
+    {
+      key: 'memories',
+      label: 'Visit the memory wall 📸',
+      done: progress.memories,
+    },
+  ]
+
   return (
     <div className="app">
       <main className="world-page">
@@ -1088,13 +1178,9 @@ function AppContent() {
           </p>
         </section>
 
-        {isLetterOpen() ? (
-          <ThankYouLetter name={name} />
-        ) : (
-          <Countdown />
-        )}
+        <Countdown />
 
-        <BirthdayCake name={name} />
+        <BirthdayCake name={name} onWishSent={() => markDone('wish')} />
 
         <section className="world-menu">
           <p className="world-label">
@@ -1147,7 +1233,10 @@ function AppContent() {
 
             <button
               className="world-card"
-              onClick={() => setCurrentSection('memories')}
+              onClick={() => {
+                markDone('memories')
+                setCurrentSection('memories')
+              }}
             >
               <span className="world-card-icon">📸</span>
 
@@ -1159,6 +1248,8 @@ function AppContent() {
             </button>
           </div>
         </section>
+
+        <ThankYouLetter name={name} tasks={journeyTasks} />
 
         <footer className="world-footer">
           <p>Made with love by ENG. Haneen Ashraf 💗</p>

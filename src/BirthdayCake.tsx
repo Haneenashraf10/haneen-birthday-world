@@ -5,11 +5,12 @@ import './BirthdayCake.css'
 
 type Props = {
   name: string
+  onWishSent?: () => void
 }
 
 const CANDLE_COUNT = 5
 
-export default function BirthdayCake({ name }: Props) {
+export default function BirthdayCake({ name, onWishSent }: Props) {
   const [blown, setBlown] = useState<boolean[]>(
     Array(CANDLE_COUNT).fill(false),
   )
@@ -67,6 +68,7 @@ export default function BirthdayCake({ name }: Props) {
 
     setWish('')
     setStatus('sent')
+    onWishSent?.()
   }
 
   const lightAgain = () => {
@@ -177,5 +179,3 @@ export default function BirthdayCake({ name }: Props) {
     </section>
   )
 }
-
-

@@ -2,38 +2,81 @@ import { useState } from 'react'
 import Confetti from './Confetti'
 import './ThankYouLetter.css'
 
-// The letter appears on 16 October 2026 (months start from 0, so 9 = October)
-const OPEN_DATE = new Date(2026, 9, 16)
+// ✏️ The letter (you can edit both versions; line breaks are kept)
+const LETTER_EN = `Thank you for stepping into my little world and trying everything inside it. It truly means a lot to me.
 
-// ✏️ Write your own letter here (line breaks are kept, Arabic works too)
-const LETTER_TEXT = `Thank you for being part of my birthday.
+Thank you for every kind word you wrote, every message, wish and comment. I read them all, and they made my birthday so much brighter.
 
-Every wish, message and memory you shared made this day so special, and I read every single one of them.
+And more than anything, thank you for being in my life. Having you around is one of the nicest gifts I could have asked for.`
 
-I'm really lucky to have you in my life.`
+const LETTER_AR = `شكراً إنك دخلت عالمي الصغير وجربت كل حاجة فيه، ده فرق معايا جداً.
 
-// Add  ?letter=1  to the link to preview the letter before the date
-export function isLetterOpen() {
-  if (window.location.search.includes('letter=1')) return true
+شكراً على كل كلمة حلوة كتبتها، كل رسالة وأمنية وتعليق. قريتهم كلهم، وخلّوا عيد ميلادي أحلى بكتير.
 
-  return Date.now() >= OPEN_DATE.getTime()
+وأكتر من أي حاجة، شكراً على وجودك في حياتي. وجودك من أحلى الهدايا اللي كنت أتمناها.`
+
+type Task = {
+  key: string
+  label: string
+  done: boolean
 }
 
 type Props = {
   name: string
+  tasks: Task[]
 }
 
-export default function ThankYouLetter({ name }: Props) {
+export default function ThankYouLetter({ name, tasks }: Props) {
   const [open, setOpen] = useState(false)
+
+  const doneCount = tasks.filter((task) => task.done).length
+
+  // Add  ?letter=1  to the link to preview the letter without finishing everything
+  const unlocked =
+    doneCount === tasks.length ||
+    window.location.search.includes('letter=1')
+
+  if (!unlocked) {
+    return (
+      <section className="letter-section">
+        <div className="letter-teaser letter-locked">
+          <div className="letter-teaser-icon">🔒</div>
+
+          <h2>A letter is waiting for you</h2>
+
+          <p>Try everything in my world to unlock it 💗</p>
+
+          <div className="letter-progress">
+            <div
+              className="letter-progress-fill"
+              style={{ width: `${(doneCount / tasks.length) * 100}%` }}
+            />
+          </div>
+
+          <small>
+            {doneCount} / {tasks.length}
+          </small>
+
+          <ul className="letter-tasks">
+            {tasks.map((task) => (
+              <li key={task.key} className={task.done ? 'done' : ''}>
+                {task.done ? '✅' : '⬜'} {task.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="letter-section">
-      <div className="letter-teaser">
+      <div className="letter-teaser letter-unlocked">
         <div className="letter-teaser-icon">💌</div>
 
-        <h2>A letter from Haneen</h2>
+        <h2>You did it! 🎉</h2>
 
-        <p>Something I wrote just for you 💗</p>
+        <p>A letter from Haneen is waiting for you 💗</p>
 
         <button className="quiz-button" onClick={() => setOpen(true)}>
           Open my letter ✨
@@ -50,23 +93,37 @@ export default function ThankYouLetter({ name }: Props) {
             aria-modal="true"
             onClick={(event) => event.stopPropagation()}
           >
-            <p className="letter-dear">Dear {name.trim()},</p>
+            <div className="letter-lang" dir="ltr">
+              <p className="letter-dear">Dear {name.trim()},</p>
 
-            <p className="letter-text" dir="auto">
-              {LETTER_TEXT}
-            </p>
+              <p className="letter-text">{LETTER_EN}</p>
 
-            <p className="letter-sign">
-              With all my love,
-              <br />
-              Haneen 💗
-            </p>
+              <p className="letter-sign">
+                With all my love,
+                <br />
+                Haneen 💗
+              </p>
+            </div>
+
+            <hr className="letter-divider" />
+
+            <div className="letter-lang" dir="rtl">
+              <p className="letter-dear">إلى {name.trim()} 💗</p>
+
+              <p className="letter-text">{LETTER_AR}</p>
+
+              <p className="letter-sign">
+                بكل حبي،
+                <br />
+                حنين 💗
+              </p>
+            </div>
 
             <button
               className="letter-close"
               onClick={() => setOpen(false)}
             >
-              Close
+              Close · إغلاق
             </button>
           </article>
         </div>
